@@ -15,10 +15,6 @@ class MyDocument extends Document {
             href="https://fonts.googleapis.com/css2?family=Lato&family=Poppins&display=swap"
             rel="stylesheet"
           />
-          <link
-            href="https://vjs.zencdn.net/7.19.2/video-js.css"
-            rel="stylesheet"
-          />
         </Head>
         <body>
           <Main />

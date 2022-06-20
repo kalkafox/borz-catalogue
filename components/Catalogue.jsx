@@ -1,6 +1,4 @@
 import { CircularProgress, Backdrop } from "@mui/material";
-import dynamic from "next/dynamic";
-import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 import { animated as a, useSpring, useTransition } from "react-spring";
 
@@ -11,14 +9,17 @@ import {
   faHammer,
   faPencil,
   faXmark,
+  faAngleLeft,
+  faAngleRight,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-const Catalogue = () => {
+const Catalogue = ({ data }) => {
   const videoRef = useRef();
   const [loaded, setLoaded] = useState(false);
   const borzSprites = ["borz_stand_r", "borz_nod_r", "borz_work_r"];
   const [borzSprite, setBorzSprite] = useState(borzSprites[0]);
+  const [renderLoad, setRenderLoad] = useState(true);
   const catalogueRef = useRef();
   const [borzImg, setBorzImg] = useState(borzSprite);
   const [catalogueOpen, setCatalogue] = useState(false);
@@ -45,6 +46,7 @@ const Catalogue = () => {
     scale: 0.7,
     opacity: 0,
     rotateZ: 0,
+    x: 0,
   }));
 
   const [catalogueTitleSpring, catalogueTitleSpringApi] = useSpring(() => ({
@@ -72,6 +74,7 @@ const Catalogue = () => {
   }));
 
   const borzTransition = useTransition(borzImg, {
+    key: borzImg,
     config: { friction: 10 },
     from: { opacity: 0, scale: 0.7 },
     enter: { opacity: 1, scale: 1 },
@@ -79,7 +82,11 @@ const Catalogue = () => {
   });
 
   useEffect(() => {
-    loaded && circularSpringApi.start({ scale: 0.8 });
+    loaded &&
+      circularSpringApi.start({
+        scale: 0.8,
+        onRest: () => setRenderLoad(false),
+      });
     loaded && videoSpringApi.start({ scale: 1.1, opacity: 1 });
     loaded && catalogueSpringApi.start({ scale: 1, opacity: 1 });
     loaded && borzSpringApi.start({ scale: 0.9, opacity: 1 });
@@ -154,16 +161,8 @@ const Catalogue = () => {
   };
 
   useEffect(() => {
-    const onResize = () => {
-      catalogueTitleSpringApi.start({
-        x: handleResize(document.body.clientWidth),
-      });
-    };
     if (catalogueOpen) {
-      catalogueTitleSpringApi.start({
-        x: handleResize(document.body.clientWidth),
-      });
-      window.addEventListener("resize", onResize);
+      setCatalogueRender(true);
       setBorzSprite(borzSprites[2]);
       setBorzImg(borzSprites[2]);
       catalogueWindowSpringApi.start({
@@ -180,11 +179,33 @@ const Catalogue = () => {
       catalogueTitleSpringApi.start({
         x: 0,
       });
-      return () => {
-        window.removeEventListener("resize", onResize);
-      };
     }
   }, [catalogueOpen]);
+
+  useEffect(() => {
+    const onResize = () => {
+      if (catalogueRender) {
+        catalogueTitleSpringApi.start({
+          x: handleResize(document.body.clientWidth),
+        });
+      } else {
+        catalogueTitleSpringApi.start({
+          x: 0,
+        });
+      }
+    };
+    if (catalogueRender) {
+      catalogueTitleSpringApi.start({
+        x: handleResize(document.body.clientWidth),
+      });
+      window.addEventListener("resize", onResize);
+    } else {
+      catalogueTitleSpringApi.start({
+        x: 0,
+      });
+    }
+    return () => window.removeEventListener("resize", onResize);
+  }, [catalogueRender]);
 
   const openCatalogue = () => {
     console.log(document.body.clientWidth);
@@ -205,21 +226,25 @@ const Catalogue = () => {
   };
 
   const catalogueWindowEnter = () => {
-    catalogueWindowSpringApi.start({
-      scale: 1.02,
-    });
-    pawSpringApi.start({
-      opacity: 1,
-    });
+    if (catalogueRender) {
+      catalogueWindowSpringApi.start({
+        scale: 1.02,
+      });
+      pawSpringApi.start({
+        opacity: 1,
+      });
+    }
   };
 
   const catalogueWindowLeave = () => {
-    catalogueWindowSpringApi.start({
-      scale: 1,
-    });
-    pawSpringApi.start({
-      opacity: 0,
-    });
+    if (catalogueRender) {
+      catalogueWindowSpringApi.start({
+        scale: 1,
+      });
+      pawSpringApi.start({
+        opacity: 0,
+      });
+    }
   };
 
   const [catalogueExitSpring, catalogueExitSpringApi] = useSpring(() => ({
@@ -228,16 +253,32 @@ const Catalogue = () => {
   }));
 
   const catalogueExitEnter = () => {
-    catalogueExitSpringApi.start({ scale: 1.7 });
+    catalogueRender && catalogueExitSpringApi.start({ scale: 1.7 });
   };
 
   const catalogueExitLeave = () => {
-    catalogueExitSpringApi.start({ scale: 1 });
+    catalogueRender && catalogueExitSpringApi.start({ scale: 1 });
   };
 
   const catalogueExitClick = () => {
     // reset the scale back when the catalogue closes
+    setCatalogueRender(false);
     catalogueExitSpringApi.start({ scale: 1 });
+    catalogueWindowSpringApi.start({
+      config: { friction: 25 },
+      scale: 0.9,
+      opacity: 0,
+      onRest: () => setCatalogue(false),
+    });
+  };
+
+  const borzDrag = (e) => {
+    console.log(e.clientX * 0.05);
+    borzSpringApi.start({ x: e.clientX - document.body.clientWidth });
+  };
+
+  const borzMouseUp = () => {
+    borzSpringApi.start({ x: 0 });
   };
 
   return (
@@ -273,7 +314,7 @@ const Catalogue = () => {
               </div>
             </div>
           </a.div>
-          {!catalogueRender && (
+          {!catalogueOpen && (
             <a.div
               style={catalogueTextSpring}
               className="text-white text-lg lg:left-48 portrait:text-sm portrait:w-48 sm:top-36 w-72 left-12 bottom-72 portrait:top-52 absolute font-[Poppins]">
@@ -290,68 +331,91 @@ const Catalogue = () => {
               </p>
               <button
                 onClick={openCatalogue}
-                className="absolute left-14 py-12">
+                className="absolute left-14 my-12 p-4 bg-[rgba(75,54,26,0.4)] rounded-xl">
                 View Catalogue
               </button>
             </a.div>
           )}
-          {catalogueRender && (
+          {catalogueOpen && (
             <a.div
               className="left-6 absolute portrait:top-64 w-4/12 portrait:w-1/2 h-4/6 top-40 bg-[#7e5f3620] backdrop-saturate-150 backdrop-blur-3xl rounded-3xl"
               style={catalogueWindowSpring}
               onMouseEnter={catalogueWindowEnter}
               onMouseLeave={catalogueWindowLeave}>
               <div className="text-slate-200 font-[Poppins] text-2xl">
-                <a.div
+                <a.button
                   onMouseEnter={catalogueExitEnter}
                   onMouseLeave={catalogueExitLeave}
                   style={catalogueExitSpring}
                   onClick={catalogueExitClick}
                   className="absolute right-4 top-1">
                   <FontAwesomeIcon icon={faXmark} />
-                </a.div>
+                </a.button>
                 <div className="p-4">
                   haha yes sparkly gems <FontAwesomeIcon icon={faGem} /> and
                   rings <FontAwesomeIcon icon={faRing} />
                   <a.div style={pawSpring}>
-                    <FontAwesomeIcon icon={faPaw} />
+                    <FontAwesomeIcon icon={faPaw} className="fa-bounce" />
                   </a.div>
                   <p className="py-4">
                     work in progress of course{" "}
                     <FontAwesomeIcon icon={faHammer} />
                     <FontAwesomeIcon icon={faPencil} />
                   </p>
+                  <div>
+                    <div>
+                      <button className="bottom-0 absolute mx-4 my-4 bg-[rgba(75,54,26,0.4)] p-2 rounded-xl disabled:text-slate-500">
+                        <FontAwesomeIcon icon={faAngleLeft} />
+                        <span className="px-2">Previous</span>
+                      </button>
+                      <button className="bottom-0 right-0 absolute mx-8 my-4 bg-[rgba(75,54,26,0.4)] p-2 rounded-xl disabled:text-slate-500">
+                        <span className="px-2">Next</span>
+                        <FontAwesomeIcon icon={faAngleRight} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </a.div>
           )}
           {borzTransition((style, i) => (
             <a.div
-              className="portrait:-right-32 lg:right-0 top-36 fixed portrait:w-80 landscape:-right-24 sm:right-20 md:-right-20 sm:w-[400px] md:w-[500px]"
+              onDragOver={borzDrag}
+              onMouseUp={borzMouseUp}
+              onDragEnd={borzMouseUp}
+              onDragStart={(e) => {
+                e.dataTransfer.setDragImage(new Image(), 0, 0);
+              }}
+              draggable="true"
+              className="cursor-grab top-36 fixed z-30 -right-80 sm:-right-52 md:-right-48 lg:-right-24"
               style={style}>
               <a.div
+                draggable="false"
                 style={borzSpring}
                 onMouseEnter={borzMouseEnter}
-                onMouseLeave={borzMouseLeave}
-                className="">
-                <Image src={require(`/public/${i}_web.webp`)} alt="borz" />
+                onMouseLeave={borzMouseLeave}>
+                <div
+                  style={{ backgroundImage: `url(/${i}_web.webp)` }}
+                  className={`bg-cover w-[586px] h-[1080px]`}></div>
               </a.div>
             </a.div>
           ))}
         </a.div>
       </div>
-      <Backdrop
-        sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 1 }}
-        open={!loaded}>
-        <a.div style={circularSpring}>
-          <span className="absolute text-6xl p-16">🐍</span>
-          <CircularProgress
-            sx={{ color: "#b67f3733" }}
-            size={200}
-            className="rounded-3xl"
-          />
-        </a.div>
-      </Backdrop>
+      {!loaded && (
+        <Backdrop
+          sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 1 }}
+          open={!loaded}>
+          <a.div style={circularSpring}>
+            <span className="absolute text-6xl p-16">🐍</span>
+            <CircularProgress
+              sx={{ color: "#b67f3733" }}
+              size={200}
+              className="rounded-3xl"
+            />
+          </a.div>
+        </Backdrop>
+      )}
     </>
   );
 };
