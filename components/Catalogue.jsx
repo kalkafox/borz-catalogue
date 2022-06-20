@@ -138,12 +138,10 @@ const Catalogue = ({ data }) => {
   }, []);
 
   const borzMouseEnter = () => {
-    setBorzImg(borzSprites[1]);
-    borzSpringApi.start({ scale: 1.05, rotateZ: -2 });
+    borzSpringApi.start({ scale: 1.05, rotateZ: 0 });
   };
 
   const borzMouseLeave = () => {
-    setBorzImg(borzSprite);
     borzSpringApi.start({ scale: 1, rotateZ: 0 });
   };
 
@@ -273,11 +271,23 @@ const Catalogue = ({ data }) => {
   };
 
   const borzDrag = (e) => {
-    console.log(e.clientX * 0.05);
-    borzSpringApi.start({ x: e.clientX - document.body.clientWidth });
+    const num = e.clientX - document.body.clientWidth + 200;
+    if (num < 0) {
+      return;
+    }
+    num *= 2;
+    borzSpringApi.start({ x: num });
+    const borzPos = borzSpring.x.get();
+    if (borzPos > 200) {
+      catalogueOpen ? catalogueExitClick() : openCatalogue();
+    }
   };
 
   const borzMouseUp = () => {
+    borzSpringApi.start({ x: 0 });
+  };
+
+  const borzMouseClick = () => {
     borzSpringApi.start({ x: 0 });
   };
 
@@ -383,6 +393,7 @@ const Catalogue = ({ data }) => {
               onDragOver={borzDrag}
               onMouseUp={borzMouseUp}
               onDragEnd={borzMouseUp}
+              onClick={borzMouseClick}
               onDragStart={(e) => {
                 e.dataTransfer.setDragImage(new Image(), 0, 0);
               }}
