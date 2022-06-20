@@ -10,6 +10,7 @@ import {
   faPaw,
   faHammer,
   faPencil,
+  faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -76,6 +77,7 @@ const Catalogue = () => {
     enter: { opacity: 1, scale: 1 },
     leave: { opacity: 0, scale: 0.7 },
   });
+
   useEffect(() => {
     loaded && circularSpringApi.start({ scale: 0.8 });
     loaded && videoSpringApi.start({ scale: 1.1, opacity: 1 });
@@ -195,13 +197,11 @@ const Catalogue = () => {
   };
 
   const clickHandler = (e) => {
-    if (catalogueOpen && e.target !== catalogueRef.current) {
-      catalogueWindowSpringApi.start({
-        opacity: 0,
-        scale: 0.8,
-      });
-      setCatalogue(false);
-    }
+    catalogueWindowSpringApi.start({
+      opacity: 0,
+      scale: 0.8,
+    });
+    setCatalogue(false);
   };
 
   const catalogueWindowEnter = () => {
@@ -222,13 +222,30 @@ const Catalogue = () => {
     });
   };
 
+  const [catalogueExitSpring, catalogueExitSpringApi] = useSpring(() => ({
+    config: { friction: 5 },
+    scale: 1,
+  }));
+
+  const catalogueExitEnter = () => {
+    catalogueExitSpringApi.start({ scale: 1.7 });
+  };
+
+  const catalogueExitLeave = () => {
+    catalogueExitSpringApi.start({ scale: 1 });
+  };
+
+  const catalogueExitClick = () => {
+    // reset the scale back when the catalogue closes
+    catalogueExitSpringApi.start({ scale: 1 });
+  };
+
   return (
     <>
       <div
         onMouseEnter={mouseEnter}
         onMouseLeave={mouseLeave}
-        onMouseMove={mouseMovement}
-        onClick={clickHandler}>
+        onMouseMove={mouseMovement}>
         <a.div style={videoSpring} className="w-full h-screen fixed -z-50">
           <video
             playsInline={true}
@@ -256,7 +273,7 @@ const Catalogue = () => {
               </div>
             </div>
           </a.div>
-          {!catalogueOpen && (
+          {!catalogueRender && (
             <a.div
               style={catalogueTextSpring}
               className="text-white text-lg lg:left-48 portrait:text-sm portrait:w-48 sm:top-36 w-72 left-12 bottom-72 portrait:top-52 absolute font-[Poppins]">
@@ -278,23 +295,33 @@ const Catalogue = () => {
               </button>
             </a.div>
           )}
-          {catalogueOpen && (
+          {catalogueRender && (
             <a.div
               className="left-6 absolute portrait:top-64 w-4/12 portrait:w-1/2 h-4/6 top-40 bg-[#7e5f3620] backdrop-saturate-150 backdrop-blur-3xl rounded-3xl"
               style={catalogueWindowSpring}
-              ref={catalogueRef}
               onMouseEnter={catalogueWindowEnter}
               onMouseLeave={catalogueWindowLeave}>
-              <div className="p-4 text-slate-200 font-[Poppins] text-2xl">
-                haha yes sparkly gems <FontAwesomeIcon icon={faGem} /> and rings{" "}
-                <FontAwesomeIcon icon={faRing} />
-                <a.div style={pawSpring}>
-                  <FontAwesomeIcon icon={faPaw} />
+              <div className="text-slate-200 font-[Poppins] text-2xl">
+                <a.div
+                  onMouseEnter={catalogueExitEnter}
+                  onMouseLeave={catalogueExitLeave}
+                  style={catalogueExitSpring}
+                  onClick={catalogueExitClick}
+                  className="absolute right-4 top-1">
+                  <FontAwesomeIcon icon={faXmark} />
                 </a.div>
-                <p className="py-4">
-                  work in progress of course <FontAwesomeIcon icon={faHammer} />
-                  <FontAwesomeIcon icon={faPencil} />
-                </p>
+                <div className="p-4">
+                  haha yes sparkly gems <FontAwesomeIcon icon={faGem} /> and
+                  rings <FontAwesomeIcon icon={faRing} />
+                  <a.div style={pawSpring}>
+                    <FontAwesomeIcon icon={faPaw} />
+                  </a.div>
+                  <p className="py-4">
+                    work in progress of course{" "}
+                    <FontAwesomeIcon icon={faHammer} />
+                    <FontAwesomeIcon icon={faPencil} />
+                  </p>
+                </div>
               </div>
             </a.div>
           )}
