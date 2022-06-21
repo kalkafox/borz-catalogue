@@ -1,5 +1,5 @@
-import { CircularProgress, Backdrop } from "@mui/material";
-import { useState, useEffect, useRef } from "react";
+import { CircularProgress, Backdrop, LinearProgress } from "@mui/material";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { animated as a, useSpring, useTransition } from "react-spring";
 
 import {
@@ -12,14 +12,36 @@ import {
   faAngleLeft,
   faAngleRight,
 } from "@fortawesome/free-solid-svg-icons";
+
+import borzNodR from "/public/borz_nod_r_web.webp";
+import borzStandR from "/public/borz_nod_r_web.webp";
+import borzWorkR from "/public/borz_work_r_web.webp";
+
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import dynamic from "next/dynamic";
+import Load from "./Load";
+
+const CatalogueComponent = dynamic(
+  () => {
+    return new Promise((resolve) => {
+      setTimeout(() => resolve(import("./CatalogueList")), 2000);
+    });
+  },
+  {
+    ssr: false,
+    suspense: true,
+  }
+);
+
+const VideoComponent = dynamic(() => import("./Video"), { ssr: false });
 
 const Catalogue = ({ data }) => {
-  const videoRef = useRef();
   const [loaded, setLoaded] = useState(false);
-  const borzSprites = ["borz_stand_r", "borz_nod_r", "borz_work_r"];
+  const borzSprites = [borzStandR.src, borzNodR.src, borzWorkR.src];
   const [borzSprite, setBorzSprite] = useState(borzSprites[0]);
   const [renderLoad, setRenderLoad] = useState(true);
+  const [progress, setProgress] = useState(0);
+  const [videoLoaded, setVideoLoaded] = useState(false);
   const catalogueRef = useRef();
   const [borzImg, setBorzImg] = useState(borzSprite);
   const [catalogueOpen, setCatalogue] = useState(false);
@@ -119,11 +141,7 @@ const Catalogue = ({ data }) => {
 
   useEffect(() => {
     const onPageLoad = () => {
-      if (!videoRef.current.paused) {
-        console.log("force playing video...");
-        videoRef.current.play();
-      }
-      setLoaded(true);
+      videoLoaded && setLoaded(true);
     };
 
     // Check if the page has already loaded
@@ -135,7 +153,7 @@ const Catalogue = ({ data }) => {
         window.removeEventListener("load", onPageLoad);
       };
     }
-  }, []);
+  }, [videoLoaded]);
 
   const borzMouseEnter = () => {
     borzSpringApi.start({ scale: 1.05, rotateZ: 0 });
@@ -291,6 +309,10 @@ const Catalogue = ({ data }) => {
     borzSpringApi.start({ x: 0 });
   };
 
+  const progressTest = (e) => {
+    console.log(e);
+  };
+
   return (
     <>
       <div
@@ -298,15 +320,17 @@ const Catalogue = ({ data }) => {
         onMouseLeave={mouseLeave}
         onMouseMove={mouseMovement}>
         <a.div style={videoSpring} className="w-full h-screen fixed -z-50">
-          <video
-            playsInline={true}
-            ref={videoRef}
-            autoPlay
-            loop
-            className="object-cover w-full h-full sepia-[.25] saturate-150 blur-sm scale-[1.1]">
-            <source type="video/webm" src="/bg/voldun_a.webm"></source>
-            <source type="video/mp4" src="/bg/voldun_a.mp4"></source>
-          </video>
+          <Suspense>
+            <VideoComponent
+              props={{
+                loaded,
+                progress,
+                setProgress,
+                videoSpring,
+                setVideoLoaded,
+              }}
+            />
+          </Suspense>
         </a.div>
         <div className="bg-[rgba(65,33,3,0.4)] w-full h-full absolute -z-20"></div>
         <a.div style={catalogueSpring} className="w-screen h-screen fixed">
@@ -373,6 +397,10 @@ const Catalogue = ({ data }) => {
                     <FontAwesomeIcon icon={faPencil} />
                   </p>
                   <div>
+                    <Suspense
+                      fallback={<Load props={{ circularSpring, progress }} />}>
+                      <CatalogueComponent />
+                    </Suspense>
                     <div>
                       <button className="bottom-0 absolute mx-4 my-4 bg-[rgba(75,54,26,0.4)] p-2 rounded-xl disabled:text-slate-500">
                         <FontAwesomeIcon icon={faAngleLeft} />
@@ -406,25 +434,29 @@ const Catalogue = ({ data }) => {
                 onMouseEnter={borzMouseEnter}
                 onMouseLeave={borzMouseLeave}>
                 <div
-                  style={{ backgroundImage: `url(/${i}_web.webp)` }}
+                  style={{ backgroundImage: `url(${i})` }}
                   className={`bg-cover w-[586px] h-[1080px]`}></div>
               </a.div>
             </a.div>
           ))}
         </a.div>
       </div>
-      {!loaded && (
+      <div>
+        <LinearProgress
+          color="inherit"
+          variant="determinate"
+          value={progress}
+          sx={{
+            color: "#b67f37ff",
+            zIndex: (theme) => theme.zIndex.drawer + 2,
+          }}
+        />
+      </div>
+      {renderLoad && (
         <Backdrop
           sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 1 }}
           open={!loaded}>
-          <a.div style={circularSpring}>
-            <span className="absolute text-6xl p-16">🐍</span>
-            <CircularProgress
-              sx={{ color: "#b67f3733" }}
-              size={200}
-              className="rounded-3xl"
-            />
-          </a.div>
+          <Load spring={circularSpring} progress={progress} />
         </Backdrop>
       )}
     </>
